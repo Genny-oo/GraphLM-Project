@@ -115,12 +115,6 @@ Found a bug? Want to add a cool feature? PRs are welcome!
 
 MIT - Use it, modify it, share it. Just don't blame me if something breaks! 😄
 
-## 🙏 Acknowledgments
 
-- Shoutout to the D3.js community for amazing examples
-- MUI team for the slick components
-- Stack Overflow for... well, you know why
-
----
 
 Made with ☕ and 💻 by Genny
