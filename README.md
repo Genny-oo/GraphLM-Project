@@ -1,120 +1,90 @@
-# Graph LM 🚀
+# Graph LM
 
-Transform your JSON data into beautiful, interactive visualizations! 
+Graph LM is a React + TypeScript app for exploring JSON as an interactive graph. It is built with Create React App, D3, and React Router.
 
-Graph LM is a React-based tool that helps you understand complex data structures through network graphs and tree views. Whether you're debugging API responses, exploring database schemas, or just trying to make sense of nested data - we've got you covered!
+## What it does
 
-## ✨ Features
+- Upload JSON files or paste raw JSON directly into the app
+- Persist the current dataset across refreshes
+- Explore JSON as a network graph with adjustable depth
+- Search nodes inside the graph
+- View quick structure and content metrics
+- Download the current visualization as SVG
+- Toggle display settings such as theme, node values, and auto-collapse
 
-- 📁 **Drag & Drop Upload** - Just drop your JSON file and watch the magic happen
-- 🌳 **Multiple Visualization Modes** - Network graphs, tree views, and more
-- 🔍 **Smart Search** - Find any node in your data instantly
-- 🎨 **Dark/Light Themes** - Easy on the eyes, day or night
-- 📊 **Data Insights** - Get instant metrics about your data structure
-- 🚀 **Lightning Fast** - Built with performance in mind
+## Tech stack
 
-## 🛠️ Tech Stack
+- React 19
+- TypeScript
+- D3.js
+- React Router
+- Create React App (`react-scripts`)
 
-- **React 18** - Because we love hooks
-- **TypeScript** - For that sweet, sweet type safety
-- **D3.js** - The visualization powerhouse
-- **MUI** - Material UI components for a polished look
-- **Vite** - Blazing fast build tool
-- **React Router** - Smooth navigation between views
-
-## 🚀 Getting Started
+## Getting started
 
 ### Prerequisites
 
-Make sure you have Node.js (v16+) installed on your machine.
+- Node.js 18+ recommended
+- npm
 
-### Installation
+### Install
 
-1. Clone this bad boy:
-```bash
-git clone https://github.com/Genny-oo/Graph_UI-Project.git
-cd Graph_UI-Project
-```
-
-2. Install dependencies:
 ```bash
 npm install
 ```
 
-3. Fire it up:
+### Start the app
+
 ```bash
-npm run dev
+npm start
 ```
 
-4. Open [http://localhost:5173](http://localhost:5173) and start visualizing!
+The development server runs at [http://localhost:3000](http://localhost:3000).
 
-## 🎯 How to Use
+### Run tests
 
-1. **Upload Your Data**
-   - Hit the "Data Editor" tab
-   - Drag & drop your JSON file (or use our sample data)
-   
-2. **Visualize**
-   - Click "Generate Graph View"
-   - Use the controls to explore your data
-   - Search for specific nodes
-   - Adjust the visualization depth
-
-3. **Customize**
-   - Toggle dark/light mode
-   - Show/hide node values
-   - Auto-collapse large structures
-
-## 📦 What's Inside?
-
-```
-src/
-├── components/          # All the React magic
-│   ├── D3Visualization.tsx    # The star of the show
-│   ├── DataInsights.tsx       # Smart data analysis
-│   └── JsonUpload.tsx         # Drag & drop goodness
-├── pages/              # Main app pages
-└── App.tsx            # Where it all comes together
+```bash
+npm test
 ```
 
-## 🤔 Why These Libraries?
+For a one-shot CI-style run:
 
-- **D3.js** - When you need full control over your visualizations, D3 is the way to go. Chart.js is cool, but D3 lets us create those custom network graphs that make data exploration actually fun.
+```bash
+CI=true npm test -- --watchAll=false
+```
 
-- **MUI TreeView** - Why reinvent the wheel? MUI's tree component is battle-tested and accessible out of the box.
-
-- **React Feather** - Beautiful icons that don't bloat your bundle. FontAwesome is great, but Feather keeps things light and clean.
-
-- **Vite** - Create React App is so 2020. Vite gives us instant hot reload and faster builds.
-
-## 🔧 Building for Production
+### Build for production
 
 ```bash
 npm run build
 ```
 
-Your production-ready app will be in the `dist` folder, ready to deploy!
+## App flow
 
-## 🐛 Known Issues
+1. Open the `Data Editor`
+2. Upload a `.json` file or paste JSON manually
+3. Review the parsed data preview
+4. Click `Generate Graph View`
+5. Adjust graph depth, search nodes, or export the SVG
 
-- Large JSON files (>10MB) might cause performance hiccups
-- Some complex circular references might not render correctly
-- The search feature is case-sensitive (feature or bug? you decide!)
+## Project structure
 
-## 🤝 Contributing
+```text
+src/
+├── components/
+│   ├── D3Visualization.tsx
+│   ├── DataInsights.tsx
+│   └── Navbar.tsx
+├── pages/
+│   ├── Home.tsx
+│   ├── JsonDataPage.tsx
+│   └── TreeVisualizationPage.tsx
+└── utils/
+    └── storage.ts
+```
 
-Found a bug? Want to add a cool feature? PRs are welcome!
+## Notes
 
-1. Fork it
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📝 License
-
-MIT - Use it, modify it, share it. Just don't blame me if something breaks! 😄
-
-
-
-Made with ☕ and 💻 by Genny
+- The graph view is optimized for hierarchical JSON rather than arbitrary graph input.
+- Very large JSON payloads can still feel heavy because the visualization is browser-side.
+- Saved graph data and display settings are stored in local browser storage.

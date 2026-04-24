@@ -1,6 +1,12 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import * as d3 from 'd3';
 import DataInsights from './DataInsights';
+import {
+  DEFAULT_GRAPH_SETTINGS,
+  GRAPH_SETTINGS_EVENT,
+  GraphSettings,
+  loadGraphSettings
+} from '../utils/storage';
 
 interface D3VisualizationProps {
   data: any;
@@ -32,44 +38,46 @@ interface LinkDatum {
  */
 const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [expandLevel, setExpandLevel] = useState<number>(3);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [settings, setSettings] = useState<GraphSettings>(DEFAULT_GRAPH_SETTINGS);
 
-  // Function to safely process data and handle the problematic path
-  const safeProcessData = useCallback((inputData: any) => {
+  useEffect(() => {
+    const nextSettings = loadGraphSettings();
+    setSettings(nextSettings);
+    setExpandLevel(nextSettings.autoCollapse ? 3 : 5);
+
+    const syncSettings = (event: Event) => {
+      const customEvent = event as CustomEvent<GraphSettings>;
+      const updatedSettings = customEvent.detail ?? loadGraphSettings();
+      setSettings(updatedSettings);
+      setExpandLevel((currentLevel) => {
+        if (!updatedSettings.autoCollapse) {
+          return Math.max(currentLevel, 4);
+        }
+
+        return Math.min(currentLevel, 3);
+      });
+    };
+
+    window.addEventListener(GRAPH_SETTINGS_EVENT, syncSettings as EventListener);
+    return () => {
+      window.removeEventListener(GRAPH_SETTINGS_EVENT, syncSettings as EventListener);
+    };
+  }, []);
+
+  // Clone the input safely so D3 can work with a detached structure.
+  const safeCloneData = useCallback((inputData: any) => {
     try {
-      // Make a deep copy to avoid mutating the original
-      const processedData = JSON.parse(JSON.stringify(inputData));
-      
-      // Fix the specific problematic path that causes the error
-      // This ensures the data structure expected by the d3 initialization exists
-      if (typeof processedData === 'object' && processedData !== null) {
-        // Make sure identifier is properly structured if it exists
-        if (processedData.identifier !== undefined && 
-            !Array.isArray(processedData.identifier)) {
-          processedData.identifier = [{
-            type: { coding: [] }, // Provide the expected structure
-            value: processedData.identifier
-          }];
-        }
-        
-        // Also handle case where root is nested under api or another key
-        if (processedData.api && typeof processedData.api === 'object') {
-          if (processedData.api.identifier !== undefined && 
-              !Array.isArray(processedData.api.identifier)) {
-            processedData.api.identifier = [{
-              type: { coding: [] },
-              value: processedData.api.identifier
-            }];
-          }
-        }
+      if (typeof structuredClone === 'function') {
+        return structuredClone(inputData);
       }
-      
-      return processedData;
+
+      return JSON.parse(JSON.stringify(inputData));
     } catch (err) {
-      console.error("Error in safeProcessData:", err);
-      // Return original data if processing fails
+      console.error("Error in safeCloneData:", err);
       return inputData;
     }
   }, []);
@@ -77,7 +85,7 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
   // Function to convert JSON to graph structure (nodes & links)
   const convertToGraphData = useCallback((obj: any) => {
     // Apply safe processing first
-    const safeData = safeProcessData(obj);
+    const safeData = safeCloneData(obj);
     
     const nodes: NodeDatum[] = [];
     const links: LinkDatum[] = [];
@@ -109,11 +117,19 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
           });
         }
         
+        // Stop before creating links to children that won't be added as nodes.
+        if (depth >= expandLevel) {
+          return;
+        }
+
         // If value is an object, process its properties
         if (value && typeof value === 'object') {
-          const entries = Array.isArray(value)
+          const rawEntries = Array.isArray(value)
             ? value.map((item, index) => [index.toString(), item])
             : Object.entries(value);
+
+          const entryLimit = settings.autoCollapse ? 12 : rawEntries.length;
+          const entries = rawEntries.slice(0, entryLimit);
           
           entries.forEach(([key, childValue]) => {
             const childPath = `${path}.${key}`;
@@ -131,6 +147,27 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
               processObject(childValue, childPath, depth + 1);
             }
           });
+
+          if (settings.autoCollapse && rawEntries.length > entryLimit) {
+            const summaryPath = `${path}.__collapsed__`;
+            const hiddenCount = rawEntries.length - entryLimit;
+
+            if (!nodes.some((node) => node.id === summaryPath)) {
+              nodes.push({
+                id: summaryPath,
+                name: `+${hiddenCount} more`,
+                value: `${hiddenCount} hidden items`,
+                type: 'string',
+                group: depth + 2
+              });
+            }
+
+            links.push({
+              source: path,
+              target: summaryPath,
+              value: 1
+            });
+          }
         }
       };
       
@@ -142,7 +179,7 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
     }
     
     return { nodes, links };
-  }, [expandLevel, safeProcessData]);
+  }, [expandLevel, safeCloneData, settings.autoCollapse]);
 
   // Effect to create/update the D3 visualization
   useEffect(() => {
@@ -161,7 +198,7 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
       d3.select(svgRef.current).selectAll('*').remove();
       
       // Set up SVG dimensions
-      const width = svgRef.current.clientWidth || 800;
+      const width = containerRef.current?.clientWidth || svgRef.current.clientWidth || 800;
       const height = 600;
       
       // Create SVG
@@ -295,21 +332,28 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
           return d.name;
         });
       
-      // Add labels to nodes
-      node.append('text')
-        .attr('dx', 12)
-        .attr('dy', 4)
-        .attr('fill', 'var(--text-secondary)')
-        .attr('font-size', '10px')
-        .text((d: NodeDatum) => {
-          // Show name and primitive values only
-          if (d.type !== 'object' && d.type !== 'array' && d.value !== null && d.value !== undefined) {
-            const valueStr = String(d.value);
-            // Truncate long values
-            return `${d.name}: ${valueStr.substring(0, 15)}${valueStr.length > 15 ? '...' : ''}`;
-          }
-          return d.name;
-        });
+      if (settings.showNodeValues) {
+        node.append('text')
+          .attr('dx', 12)
+          .attr('dy', 4)
+          .attr('fill', 'var(--text-secondary)')
+          .attr('font-size', '10px')
+          .text((d: NodeDatum) => {
+            if (d.type !== 'object' && d.type !== 'array' && d.value !== null && d.value !== undefined) {
+              const valueStr = String(d.value);
+              return `${d.name}: ${valueStr.substring(0, 15)}${valueStr.length > 15 ? '...' : ''}`;
+            }
+
+            return d.name;
+          });
+      } else {
+        node.append('text')
+          .attr('dx', 12)
+          .attr('dy', 4)
+          .attr('fill', 'var(--text-secondary)')
+          .attr('font-size', '10px')
+          .text((d: NodeDatum) => d.name);
+      }
       
       // Update positions on each simulation tick
       simulation.on('tick', () => {
@@ -339,7 +383,7 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
       console.error("Error in D3Visualization effect:", error);
       setError("Error rendering visualization. Please try a different data structure.");
     }
-  }, [data, convertToGraphData, searchQuery]);
+  }, [data, convertToGraphData, searchQuery, settings.showNodeValues]);
 
   // Handle search input change
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -349,6 +393,36 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
   // Handle expand level change
   const handleExpandLevelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setExpandLevel(parseInt(e.target.value));
+  };
+
+  const handleDownloadSvg = () => {
+    if (!svgRef.current) return;
+
+    const serializer = new XMLSerializer();
+    const svgMarkup = serializer.serializeToString(svgRef.current);
+    const svgBlob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(svgBlob);
+    const downloadLink = document.createElement('a');
+
+    downloadLink.href = blobUrl;
+    downloadLink.download = 'graph-lm-visualization.svg';
+    downloadLink.click();
+    URL.revokeObjectURL(blobUrl);
+  };
+
+  const handleFullscreen = async () => {
+    if (!containerRef.current) return;
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+
+      await containerRef.current.requestFullscreen();
+    } catch (fullscreenError) {
+      console.error('Unable to toggle fullscreen:', fullscreenError);
+    }
   };
 
   return (
@@ -386,10 +460,10 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
             />
           </div>
           <div className="control-buttons">
-            <button className="btn-secondary">
+            <button className="btn-secondary" onClick={handleDownloadSvg}>
               <span>Download SVG</span>
             </button>
-            <button className="btn-secondary">
+            <button className="btn-secondary" onClick={handleFullscreen}>
               <span>Fullscreen</span>
             </button>
           </div>
@@ -400,7 +474,7 @@ const D3Visualization: React.FC<D3VisualizationProps> = ({ data }) => {
             <p>Try using a different data structure or a sample data option.</p>
           </div>
         ) : (
-          <div className="visualization-svg-container">
+          <div ref={containerRef} className="visualization-svg-container">
             <svg ref={svgRef} className="d3-svg"></svg>
           </div>
         )}

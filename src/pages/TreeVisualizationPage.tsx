@@ -11,6 +11,30 @@ import {
   RefreshCw
 } from 'react-feather';
 import D3Visualization from '../components/D3Visualization';
+import { loadGraphData, saveGraphData } from '../utils/storage';
+
+const sampleData = {
+  api: {
+    text: 'example',
+    identifier: '12345',
+    name: {
+      active: true,
+      id: 1
+    },
+    telecom: [
+      { system: 'email', value: 'test@example.com' },
+      { system: 'phone', value: '123-456-7890' }
+    ],
+    attribute: {
+      extension: 'something'
+    },
+    address: {},
+    contact: {},
+    managingOrganization: {
+      reference: 'Organization/1'
+    }
+  }
+};
 
 /**
  * Enhanced Graph Visualization page with updated terminology
@@ -27,36 +51,30 @@ const TreeVisualizationPage: React.FC = () => {
       if (location.state.fileName) {
         setCurrentSource(location.state.fileName);
       }
+      return;
+    }
+
+    const savedGraphData = loadGraphData();
+    if (savedGraphData) {
+      setJsonData(savedGraphData.jsonData);
+      setCurrentSource(savedGraphData.fileName);
     }
   }, [location]);
+
+  useEffect(() => {
+    if (!jsonData) return;
+
+    saveGraphData({
+      jsonData,
+      fileName: currentSource,
+      lastModified: new Date().toLocaleString()
+    });
+  }, [jsonData, currentSource]);
   
   // Sample data for testing when no data is provided
   const loadSampleData = () => {
-    const sampleData = {
-      "api": {
-        "text": "example",
-        "identifier": "12345",
-        "name": {
-          "active": true,
-          "id": 1
-        },
-        "telecom": [
-          { "system": "email", "value": "test@example.com" },
-          { "system": "phone", "value": "123-456-7890" }
-        ],
-        "attribute": {
-          "extension": "something"
-        },
-        "address": {},
-        "contact": {},
-        "managingOrganization": {
-          "reference": "Organization/1"
-        }
-      }
-    };
-    
     setJsonData(sampleData);
-    setCurrentSource("sample_data.json");
+    setCurrentSource('sample_data.json');
   };
   
   // Handle file upload
@@ -164,7 +182,7 @@ const TreeVisualizationPage: React.FC = () => {
         <div className="tip">
           <AlertTriangle size={18} className="tip-icon" />
           <p>Adjust the depth level to control how many layers of relationships are displayed in the graph.</p>
-          <button className="btn-refresh">
+          <button className="btn-refresh" onClick={loadSampleData}>
             <RefreshCw size={14} />
           </button>
         </div>

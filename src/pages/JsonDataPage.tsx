@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   UploadCloud, 
@@ -7,8 +7,10 @@ import {
   RefreshCw,
   FileText,
   Clock,
-  Share2
+  Share2,
+  Trash2
 } from 'react-feather';
+import { clearGraphData, loadGraphData, saveGraphData } from '../utils/storage';
 
 /**
  * Enhanced Data Editor page that passes data to visualization
@@ -18,15 +20,37 @@ const JsonDataPage: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [currentFile, setCurrentFile] = useState<string | null>(null);
   const [lastModified, setLastModified] = useState<string | null>(null);
+  const [showPasteEditor, setShowPasteEditor] = useState(false);
+  const [pastedJson, setPastedJson] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   
+  useEffect(() => {
+    const savedGraphData = loadGraphData();
+    if (!savedGraphData) return;
+
+    setJsonData(savedGraphData.jsonData);
+    setCurrentFile(savedGraphData.fileName);
+    setLastModified(savedGraphData.lastModified);
+    setPastedJson(JSON.stringify(savedGraphData.jsonData, null, 2));
+  }, []);
+
+  useEffect(() => {
+    if (!jsonData) return;
+
+    saveGraphData({
+      jsonData,
+      fileName: currentFile,
+      lastModified
+    });
+  }, [jsonData, currentFile, lastModified]);
+
   const handleJsonParsed = (data: Record<string, any>, fileName?: string) => {
+    const savedAt = new Date().toLocaleString();
     setJsonData(data);
-    if (fileName) {
-      setCurrentFile(fileName);
-      setLastModified(new Date().toLocaleString());
-    }
+    setCurrentFile(fileName ?? 'Pasted JSON');
+    setLastModified(savedAt);
+    setPastedJson(JSON.stringify(data, null, 2));
   };
   
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -81,6 +105,25 @@ const JsonDataPage: React.FC = () => {
       };
       reader.readAsText(file);
     }
+  };
+
+  const handlePasteSubmit = () => {
+    try {
+      const parsedJson = JSON.parse(pastedJson);
+      handleJsonParsed(parsedJson);
+      setShowPasteEditor(false);
+    } catch (error) {
+      console.error('Error parsing pasted JSON', error);
+      alert('That JSON could not be parsed. Please check the format and try again.');
+    }
+  };
+
+  const handleClearData = () => {
+    setJsonData(null);
+    setCurrentFile(null);
+    setLastModified(null);
+    setPastedJson('');
+    clearGraphData();
   };
   
   // Navigate to the tree visualization with the current data
@@ -149,9 +192,12 @@ const JsonDataPage: React.FC = () => {
       <div className="content-card">
         <div className="card-header">
           <h2>Upload or Enter Data</h2>
-          <button className="btn-secondary">
+          <button
+            className="btn-secondary"
+            onClick={() => setShowPasteEditor((current) => !current)}
+          >
             <Code size={16} />
-            <span>Paste Data</span>
+            <span>{showPasteEditor ? 'Hide Editor' : 'Paste Data'}</span>
           </button>
         </div>
         
@@ -172,6 +218,29 @@ const JsonDataPage: React.FC = () => {
           <UploadCloud size={48} className="upload-icon" />
           <p className="upload-text">Drag & drop a data file here, or click to select a file</p>
         </div>
+
+        {showPasteEditor && (
+          <div className="paste-editor">
+            <label htmlFor="json-paste-area" className="paste-editor-label">
+              Paste valid JSON below
+            </label>
+            <textarea
+              id="json-paste-area"
+              className="paste-editor-input"
+              value={pastedJson}
+              onChange={(event) => setPastedJson(event.target.value)}
+              placeholder='{"nodes":[{"id":1}]}'
+            />
+            <div className="paste-editor-actions">
+              <button className="btn-secondary" onClick={() => setPastedJson('')}>
+                Clear
+              </button>
+              <button className="btn-primary" onClick={handlePasteSubmit}>
+                Use Pasted JSON
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Display Section */}
@@ -179,10 +248,16 @@ const JsonDataPage: React.FC = () => {
         {jsonData ? (
           <div className="json-preview">
             <pre>{JSON.stringify(jsonData, null, 2)}</pre>
-            <button onClick={navigateToVisualization} className="btn-primary">
-              <Share2 size={16} />
-              <span>Generate Graph View</span>
-            </button>
+            <div className="json-preview-actions">
+              <button onClick={navigateToVisualization} className="btn-primary">
+                <Share2 size={16} />
+                <span>Generate Graph View</span>
+              </button>
+              <button onClick={handleClearData} className="btn-secondary">
+                <Trash2 size={16} />
+                <span>Clear Data</span>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="no-data-message">
@@ -196,7 +271,7 @@ const JsonDataPage: React.FC = () => {
         <div className="tip">
           <AlertTriangle size={18} className="tip-icon" />
           <p>Structured data with clear entity relationships will generate the most effective graph visualizations.</p>
-          <button className="btn-refresh">
+          <button className="btn-refresh" onClick={() => setShowPasteEditor(true)}>
             <RefreshCw size={14} />
           </button>
         </div>

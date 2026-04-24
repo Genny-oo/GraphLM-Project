@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Database, Home, GitBranch, Settings, RotateCcw, Moon, Sun, Eye, EyeOff, Layers } from 'react-feather';
+import {
+  DEFAULT_GRAPH_SETTINGS,
+  loadGraphSettings,
+  saveGraphSettings
+} from '../utils/storage';
 
 /**
  * Enhanced navigation bar with functional settings dropdown
@@ -62,30 +67,32 @@ const Navbar: React.FC = () => {
   
   // Apply settings
   const applySettings = () => {
-    // Here you would integrate with your visualization settings
-    // For now, we'll just update the theme
-    
-    // Send settings to local storage
-    localStorage.setItem('graphLmSettings', JSON.stringify({
+    saveGraphSettings({
       darkMode: isDarkMode,
       showNodeValues,
       autoCollapse
-    }));
+    });
     
     // Close settings dropdown
+    setShowSettings(false);
+  };
+
+  const resetSettings = () => {
+    setIsDarkMode(DEFAULT_GRAPH_SETTINGS.darkMode);
+    setShowNodeValues(DEFAULT_GRAPH_SETTINGS.showNodeValues);
+    setAutoCollapse(DEFAULT_GRAPH_SETTINGS.autoCollapse);
+    applyTheme(DEFAULT_GRAPH_SETTINGS.darkMode);
+    saveGraphSettings(DEFAULT_GRAPH_SETTINGS);
     setShowSettings(false);
   };
   
   // Restore settings from local storage
   useEffect(() => {
-    const savedSettings = localStorage.getItem('graphLmSettings');
-    if (savedSettings) {
-      const settings = JSON.parse(savedSettings);
-      setIsDarkMode(settings.darkMode);
-      setShowNodeValues(settings.showNodeValues);
-      setAutoCollapse(settings.autoCollapse);
-      applyTheme(settings.darkMode);
-    }
+    const settings = loadGraphSettings();
+    setIsDarkMode(settings.darkMode);
+    setShowNodeValues(settings.showNodeValues);
+    setAutoCollapse(settings.autoCollapse);
+    applyTheme(settings.darkMode);
   }, []);
   
   const isActive = (path: string) => {
@@ -169,6 +176,9 @@ const Navbar: React.FC = () => {
               </div>
               
               <div className="settings-footer">
+                <button className="btn-settings-reset" onClick={resetSettings}>
+                  Reset
+                </button>
                 <button className="btn-settings-apply" onClick={applySettings}>
                   Apply Changes
                 </button>
@@ -177,7 +187,7 @@ const Navbar: React.FC = () => {
           )}
         </div>
         
-        <button className="icon-button">
+        <button className="icon-button" onClick={resetSettings} title="Reset display settings">
           <RotateCcw size={18} />
         </button>
       </div>
