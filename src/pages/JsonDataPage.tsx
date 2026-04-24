@@ -20,6 +20,7 @@ import {
   generateSchema,
   generateTypeScriptInterface
 } from '../utils/jsonIntelligence';
+import AIInsights from '../components/AIInsights';
 
 const JsonDataPage: React.FC = () => {
   const [jsonData, setJsonData] = useState<Record<string, any> | null>(null);
@@ -283,6 +284,8 @@ const JsonDataPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {jsonData && <AIInsights data={jsonData} source={currentFile ?? undefined} />}
       
       <div className="content-card">
         {jsonData ? (
