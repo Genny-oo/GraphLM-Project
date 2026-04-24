@@ -1,4 +1,5 @@
 import React from 'react';
+import '../startup.css';
 import { Link } from 'react-router-dom';
 import { UploadCloud, Database, Code, Share2, AlertTriangle, Zap, GitPullRequest, FileText } from 'react-feather';
 
