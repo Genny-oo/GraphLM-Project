@@ -6,13 +6,11 @@ import './App.css';
 import Home from './pages/Home';
 import JsonDataPage from './pages/JsonDataPage';
 import TreeVisualizationPage from './pages/TreeVisualizationPage';
+import ComparePage from './pages/ComparePage';
 
 // Import components
 import Navbar from './components/Navbar';
 
-/**
- * Main App component with enhanced routing
- */
 const App: React.FC = () => {
   return (
     <Router>
@@ -23,6 +21,7 @@ const App: React.FC = () => {
             <Route path="/" element={<Home />} />
             <Route path="/json-data" element={<JsonDataPage />} />
             <Route path="/tree-visualization" element={<TreeVisualizationPage />} />
+            <Route path="/compare" element={<ComparePage />} />
           </Routes>
         </main>
       </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Database, Home, GitBranch, Settings, RotateCcw, Moon, Sun, Eye, EyeOff, Layers } from 'react-feather';
+import { Database, Home, GitBranch, Settings, RotateCcw, Moon, Sun, Eye, EyeOff, Layers, Shuffle } from 'react-feather';
 import {
   DEFAULT_GRAPH_SETTINGS,
   loadGraphSettings,
@@ -108,7 +108,7 @@ const Navbar: React.FC = () => {
       <div className="navbar-left">
         <Link to="/" className="navbar-brand">
           <Database className="navbar-icon" size={20} />
-          <span>Graph LM</span>
+          <span>Graph LM Pro</span>
         </Link>
       </div>
       
@@ -124,6 +124,10 @@ const Navbar: React.FC = () => {
         <Link to="/tree-visualization" className={isActive('/tree-visualization')}>
           <GitBranch size={16} />
           <span>Graph View</span>
+        </Link>
+        <Link to="/compare" className={isActive('/compare')}>
+          <Shuffle size={16} />
+          <span>Compare JSON</span>
         </Link>
       </div>
       
