@@ -8,13 +8,19 @@ import {
   FileText,
   Clock,
   Share2,
-  Trash2
+  Trash2,
+  Download,
+  Activity
 } from 'react-feather';
 import { clearGraphData, loadGraphData, saveGraphData } from '../utils/storage';
+import {
+  analyzeQuality,
+  buildMarkdownReport,
+  calculateJsonMetrics,
+  generateSchema,
+  generateTypeScriptInterface
+} from '../utils/jsonIntelligence';
 
-/**
- * Enhanced Data Editor page that passes data to visualization
- */
 const JsonDataPage: React.FC = () => {
   const [jsonData, setJsonData] = useState<Record<string, any> | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -22,6 +28,8 @@ const JsonDataPage: React.FC = () => {
   const [lastModified, setLastModified] = useState<string | null>(null);
   const [showPasteEditor, setShowPasteEditor] = useState(false);
   const [pastedJson, setPastedJson] = useState('');
+  const [apiUrl, setApiUrl] = useState('');
+  const [apiLoading, setApiLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   
@@ -51,6 +59,28 @@ const JsonDataPage: React.FC = () => {
     setCurrentFile(fileName ?? 'Pasted JSON');
     setLastModified(savedAt);
     setPastedJson(JSON.stringify(data, null, 2));
+  };
+
+  const handleFetchApi = async () => {
+    if (!apiUrl.trim()) {
+      alert('Please enter an API endpoint.');
+      return;
+    }
+
+    try {
+      setApiLoading(true);
+      const response = await fetch(apiUrl.trim());
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+      const data = await response.json();
+      handleJsonParsed(data, apiUrl.trim());
+    } catch (error) {
+      console.error('Failed to fetch API data:', error);
+      alert('Unable to fetch JSON from this endpoint. Check the URL or CORS settings.');
+    } finally {
+      setApiLoading(false);
+    }
   };
   
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -126,10 +156,9 @@ const JsonDataPage: React.FC = () => {
     clearGraphData();
   };
   
-  // Navigate to the tree visualization with the current data
   const navigateToVisualization = () => {
     if (!jsonData) {
-      alert('Please upload or paste JSON data first');
+      alert('Please upload, paste, or fetch JSON data first');
       return;
     }
     
@@ -140,146 +169,145 @@ const JsonDataPage: React.FC = () => {
       } 
     });
   };
+
+  const downloadReport = () => {
+    if (!jsonData) return;
+    const report = buildMarkdownReport(currentFile ?? 'Graph LM Pro Dataset', jsonData);
+    const blob = new Blob([report], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'graph-lm-pro-report.md';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const metrics = jsonData ? calculateJsonMetrics(jsonData) : null;
+  const qualityIssues = jsonData ? analyzeQuality(jsonData) : [];
+  const schema = jsonData ? generateSchema(jsonData) : null;
+  const tsInterface = jsonData ? generateTypeScriptInterface(jsonData) : '';
   
   return (
     <div className="json-data-page">
       <h1 className="page-title">Data Editor</h1>
       
-      {/* Progress Indicators */}
       <div className="progress-tracker">
-        <div className="progress-step active">
-          <div className="progress-icon">
-            <FileText size={16} />
-          </div>
-          <span>Import</span>
-        </div>
+        <div className="progress-step active"><div className="progress-icon"><FileText size={16} /></div><span>Import</span></div>
         <div className="progress-connector"></div>
-        <div className="progress-step">
-          <div className="progress-icon">
-            <Code size={16} />
-          </div>
-          <span>Edit</span>
-        </div>
+        <div className="progress-step active"><div className="progress-icon"><Activity size={16} /></div><span>Analyze</span></div>
         <div className="progress-connector"></div>
-        <div className="progress-step">
-          <div className="progress-icon">
-            <Share2 size={16} />
-          </div>
-          <span>Visualize</span>
-        </div>
+        <div className="progress-step"><div className="progress-icon"><Share2 size={16} /></div><span>Visualize</span></div>
       </div>
       
-      {/* Source Information */}
       {currentFile && (
         <div className="source-info-card">
-          <div className="source-info-header">
-            <h3>Current Source</h3>
-          </div>
+          <div className="source-info-header"><h3>Current Source</h3></div>
           <div className="source-details">
-            <div className="source-item">
-              <FileText size={14} />
-              <span><strong>File:</strong> {currentFile}</span>
-            </div>
-            <div className="source-item">
-              <Clock size={14} />
-              <span><strong>Last Modified:</strong> {lastModified}</span>
-            </div>
+            <div className="source-item"><FileText size={14} /><span><strong>Source:</strong> {currentFile}</span></div>
+            <div className="source-item"><Clock size={14} /><span><strong>Last Modified:</strong> {lastModified}</span></div>
           </div>
         </div>
       )}
+
+      <div className="content-card">
+        <div className="card-header"><h2>Fetch JSON from API</h2></div>
+        <div className="paste-editor">
+          <label className="paste-editor-label">Paste a public JSON API endpoint</label>
+          <div className="paste-editor-actions">
+            <input
+              value={apiUrl}
+              onChange={(event) => setApiUrl(event.target.value)}
+              className="search-input"
+              placeholder="https://api.example.com/users"
+            />
+            <button className="btn-primary" onClick={handleFetchApi} disabled={apiLoading}>
+              <RefreshCw size={16} />
+              <span>{apiLoading ? 'Fetching...' : 'Fetch API'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
       
-      {/* Upload Section */}
       <div className="content-card">
         <div className="card-header">
-          <h2>Upload or Enter Data</h2>
-          <button
-            className="btn-secondary"
-            onClick={() => setShowPasteEditor((current) => !current)}
-          >
+          <h2>Upload or Paste Data</h2>
+          <button className="btn-secondary" onClick={() => setShowPasteEditor((current) => !current)}>
             <Code size={16} />
             <span>{showPasteEditor ? 'Hide Editor' : 'Paste Data'}</span>
           </button>
         </div>
         
-        <div 
-          className={`upload-area ${isDragging ? 'dragging' : ''}`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={handleFileClick}
-        >
-          <input 
-            type="file" 
-            ref={fileInputRef}
-            className="hidden-input"
-            accept=".json"
-            onChange={handleFileChange}
-          />
+        <div className={`upload-area ${isDragging ? 'dragging' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={handleFileClick}>
+          <input type="file" ref={fileInputRef} className="hidden-input" accept=".json" onChange={handleFileChange} />
           <UploadCloud size={48} className="upload-icon" />
-          <p className="upload-text">Drag & drop a data file here, or click to select a file</p>
+          <p className="upload-text">Drag & drop a JSON file here, or click to select a file</p>
         </div>
 
         {showPasteEditor && (
           <div className="paste-editor">
-            <label htmlFor="json-paste-area" className="paste-editor-label">
-              Paste valid JSON below
-            </label>
-            <textarea
-              id="json-paste-area"
-              className="paste-editor-input"
-              value={pastedJson}
-              onChange={(event) => setPastedJson(event.target.value)}
-              placeholder='{"nodes":[{"id":1}]}'
-            />
+            <label htmlFor="json-paste-area" className="paste-editor-label">Paste valid JSON below</label>
+            <textarea id="json-paste-area" className="paste-editor-input" value={pastedJson} onChange={(event) => setPastedJson(event.target.value)} placeholder='{"users":[{"id":1,"name":"Ada"}]}' />
             <div className="paste-editor-actions">
-              <button className="btn-secondary" onClick={() => setPastedJson('')}>
-                Clear
-              </button>
-              <button className="btn-primary" onClick={handlePasteSubmit}>
-                Use Pasted JSON
-              </button>
+              <button className="btn-secondary" onClick={() => setPastedJson('')}>Clear</button>
+              <button className="btn-primary" onClick={handlePasteSubmit}>Use Pasted JSON</button>
             </div>
           </div>
         )}
       </div>
+
+      {jsonData && metrics && (
+        <div className="content-card">
+          <div className="card-header"><h2>Engineering Insights</h2></div>
+          <div className="insights-content" style={{ padding: '1rem' }}>
+            <div className="insights-section">
+              <h3>Metrics</h3>
+              <div className="insights-metrics">
+                <div className="metric-row"><span>Total Nodes:</span><strong>{metrics.totalNodes}</strong></div>
+                <div className="metric-row"><span>Objects:</span><strong>{metrics.objects}</strong></div>
+                <div className="metric-row"><span>Arrays:</span><strong>{metrics.arrays}</strong></div>
+                <div className="metric-row"><span>Max Depth:</span><strong>{metrics.maxDepth}</strong></div>
+              </div>
+            </div>
+            <div className="insights-section">
+              <h3>Quality Warnings</h3>
+              {qualityIssues.length === 0 ? <p>No major issues detected.</p> : qualityIssues.slice(0, 6).map((issue, index) => <p key={index}><strong>{issue.severity.toUpperCase()}</strong> {issue.path}: {issue.message}</p>)}
+            </div>
+            <div className="insights-section">
+              <h3>Generated Schema</h3>
+              <pre>{JSON.stringify(schema, null, 2)}</pre>
+            </div>
+            <div className="insights-section">
+              <h3>TypeScript Interface</h3>
+              <pre>{tsInterface}</pre>
+            </div>
+          </div>
+        </div>
+      )}
       
-      {/* Display Section */}
       <div className="content-card">
         {jsonData ? (
           <div className="json-preview">
             <pre>{JSON.stringify(jsonData, null, 2)}</pre>
             <div className="json-preview-actions">
-              <button onClick={navigateToVisualization} className="btn-primary">
-                <Share2 size={16} />
-                <span>Generate Graph View</span>
-              </button>
-              <button onClick={handleClearData} className="btn-secondary">
-                <Trash2 size={16} />
-                <span>Clear Data</span>
-              </button>
+              <button onClick={navigateToVisualization} className="btn-primary"><Share2 size={16} /><span>Generate Graph View</span></button>
+              <button onClick={downloadReport} className="btn-secondary"><Download size={16} /><span>Download Report</span></button>
+              <button onClick={handleClearData} className="btn-secondary"><Trash2 size={16} /><span>Clear Data</span></button>
             </div>
           </div>
         ) : (
-          <div className="no-data-message">
-            <p>No data to display. Please upload or paste a file.</p>
-          </div>
+          <div className="no-data-message"><p>No data to display. Please upload, paste, or fetch JSON.</p></div>
         )}
       </div>
       
-      {/* Tip Section */}
       <div className="tip-container">
         <div className="tip">
           <AlertTriangle size={18} className="tip-icon" />
-          <p>Structured data with clear entity relationships will generate the most effective graph visualizations.</p>
-          <button className="btn-refresh" onClick={() => setShowPasteEditor(true)}>
-            <RefreshCw size={14} />
-          </button>
+          <p>Engineering mode focuses on schemas, contracts, warnings, and reports that help teams debug API payloads.</p>
+          <button className="btn-refresh" onClick={() => setShowPasteEditor(true)}><RefreshCw size={14} /></button>
         </div>
       </div>
       
-      <div className="footer">
-        <p>Graph LM Visualization Tool</p>
-      </div>
+      <div className="footer"><p>Graph LM Pro Developer Tool</p></div>
     </div>
   );
 };
