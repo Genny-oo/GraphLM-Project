@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { UploadCloud, Database, Code, Share2, Grid, AlertTriangle, Zap, GitPullRequest, FileText } from 'react-feather';
+import { UploadCloud, Database, Code, Share2, AlertTriangle, Zap, GitPullRequest, FileText } from 'react-feather';
 
 const Home: React.FC = () => {
   return (
@@ -8,16 +8,19 @@ const Home: React.FC = () => {
       <section className="hero-section startup-hero">
         <div className="hero-glow hero-glow-one" />
         <div className="hero-glow hero-glow-two" />
+
         <div className="hero-content startup-hero-content">
           <div className="hero-pill">
             <Zap size={14} />
             <span>AI-ready JSON intelligence for developers</span>
           </div>
+
           <h1>Understand complex APIs in seconds.</h1>
           <p className="hero-description">
             Graph LM Pro turns messy JSON and API responses into interactive graphs, schemas,
             TypeScript interfaces, quality warnings, and breaking-change reports.
           </p>
+
           <div className="hero-actions">
             <Link to="/json-data" className="cta-button">
               <UploadCloud size={18} />
@@ -29,7 +32,8 @@ const Home: React.FC = () => {
             </Link>
           </div>
         </div>
-        <div className="hero-preview-card">
+
+        <div className="hero-preview-card content-card">
           <div className="preview-toolbar">
             <span></span><span></span><span></span>
             <strong>Graph LM Pro</strong>
@@ -44,7 +48,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <section className="section stats-strip">
+      <section className="section stats-strip content-card">
         <div><strong>4</strong><span>Import modes</span></div>
         <div><strong>7+</strong><span>Analysis checks</span></div>
         <div><strong>D3</strong><span>Graph engine</span></div>
