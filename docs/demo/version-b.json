@@ -1,0 +1,8 @@
+{
+  "device": {
+    "id": "demo-001",
+    "flow_rate": "12.5",
+    "battery": 92
+  },
+  "schemaVersion": 2
+}

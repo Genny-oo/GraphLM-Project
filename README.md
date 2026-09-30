@@ -1,5 +1,9 @@
 # Graph LM Pro — API & JSON Intelligence Dashboard
 
+## Visual demo
+
+[**View the screenshots and verified demonstration →**](docs/demo/README.md)
+
 Graph LM Pro is a React + TypeScript developer tool for visualizing, debugging, comparing, and analyzing complex JSON and API responses. It combines D3 graph rendering with schema inference, TypeScript interface generation, data quality checks, JSON diffing, exportable reports, and a workspace-style workflow.
 
 ## What it does
