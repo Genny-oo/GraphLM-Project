@@ -2,7 +2,7 @@
 
 [Open the live app](https://graph-ui-project.vercel.app/) · [Try the comparison tool](https://graph-ui-project.vercel.app/compare)
 
-Actual screenshots captured from the deployed app on September 30, 2026, using synthetic data. These are observed application results, not mockups.
+Actual screenshots captured from the deployed app, using synthetic data. These are observed application results, not mockups.
 
 ## 1. Detect API changes
 
